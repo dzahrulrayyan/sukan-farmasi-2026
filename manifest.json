@@ -1,0 +1,21 @@
+{
+  "name": "Live Sukan Farmasi 2026",
+  "short_name": "Sukan Farmasi",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4338ca",
+  "description": "Papan markah dan jadual langsung Sukan Farmasi 2026",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/861/861512.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/861/861512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
