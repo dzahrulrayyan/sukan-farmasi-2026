@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sukan Farmasi 2026</title>
+  
+  <!-- PWA Meta & Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4338ca">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/861/861512.png">
+
+  <!-- Tailwind CSS & Font -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen pb-20">
+
+  <!-- Header Atas (Mobile Friendly) -->
+  <header class="bg-indigo-700 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <div>
+        <h1 class="text-base font-extrabold tracking-tight flex items-center gap-1.5">
+          <span>🏆</span> Sukan Farmasi 2026
+        </h1>
+        <p class="text-[11px] text-indigo-200" id="lastUpdatedTxt">Memuatkan data terkini...</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Butang Install PWA (Akan muncul jika disokong) -->
+        <button id="pwaInstallBtn" class="hidden text-xs px-2.5 py-1.5 rounded-lg bg-amber-400 text-slate-900 font-extrabold shadow-sm animate-pulse">
+          ⬇️ Pasang
+        </button>
+        <!-- Butang Muat Semula Data -->
+        <button onclick="fetchData(true)" id="refreshBtn" class="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs flex items-center transition" title="Muat semula">
+          🔄
+        </button>
+        <!-- Butang Log Masuk Admin -->
+        <button onclick="toggleAdminModal()" id="adminBadgeBtn" class="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-800 text-indigo-100 font-semibold border border-indigo-500/40">
+          🔑 Admin
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Navigasi Bawah Header -->
+    <div class="max-w-md mx-auto px-4 flex border-t border-indigo-600/60 bg-indigo-800/40 text-xs font-semibold">
+      <button onclick="switchTab('standings')" id="tabBtnStandings" class="flex-1 py-2.5 text-center border-b-2 border-white text-white">
+        Kedudukan
+      </button>
+      <button onclick="switchTab('schedule')" id="tabBtnSchedule" class="flex-1 py-2.5 text-center border-b-2 border-transparent text-indigo-200">
+        Jadual & Skor
+      </button>
+    </div>
+  </header>
+
+  <!-- Kandungan Utama -->
+  <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
+
+    <!-- Status Bar / Banner Admin Aktif -->
+    <div id="adminBanner" class="hidden bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs px-3 py-2 rounded-xl flex items-center justify-between">
+      <div class="flex items-center gap-1.5 font-bold">
+        <span>✅</span> Mod Admin Aktif (Boleh Kemaskini Skor)
+      </div>
+      <button onclick="logoutAdmin()" class="text-rose-600 font-bold hover:underline">Keluar</button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: KEDUDUKAN KESELURUHAN (STANDINGS)   -->
+    <!-- ========================================== -->
+    <section id="viewStandings" class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Kedudukan Rumah Sukan</h2>
+        <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">4 Pasukan</span>
+      </div>
+
+      <div id="standingsContainer" class="space-y-2.5">
+        <div class="text-center py-10 text-slate-400 text-sm">Sedang memuat turun data...</div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: JADUAL & PERLAWANAN (SCHEDULE)      -->
+    <!-- ========================================== -->
+    <section id="viewSchedule" class="hidden space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Jadual Perlawanan</h2>
+        <span id="matchCountBadge" class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 Perlawanan</span>
+      </div>
+
+      <!-- Penapis Acara Sukan -->
+      <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
+        <button onclick="filterMatches('Semua')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-indigo-600 text-white shrink-0" data-sport="Semua">Semua</button>
+        <button onclick="filterMatches('Bola Tampar Lelaki')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0" data-sport="Bola Tampar Lelaki">Tampar (L)</button>
+        <button onclick="filterMatches('Bola Tampar Wanita')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0" data-sport="Bola Tampar Wanita">Tampar (W)</button>
+        <button onclick="filterMatches('Bola Jaring')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0" data-sport="Bola Jaring">Bola Jaring</button>
+        <button onclick="filterMatches('Hias Khemah')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0" data-sport="Hias Khemah">Hias Khemah</button>
+        <button onclick="filterMatches('Explore Race')" class="filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0" data-sport="Explore Race">Explore Race</button>
+      </div>
+
+      <div id="matchesContainer" class="space-y-2.5">
+        <div class="text-center py-10 text-slate-400 text-sm">Sedang memuatkan jadual...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: LOG MASUK ADMIN -->
+  <div id="adminLoginModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 shadow-2xl border border-slate-200 text-xs space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+          <span>🔒</span> Akses Admin
+        </h3>
+        <button onclick="toggleAdminModal()" class="text-slate-400 hover:text-slate-600 text-base">✕</button>
+      </div>
+      <p class="text-slate-600">Masukkan kata laluan admin untuk kemaskini skor perlawanan.</p>
+      
+      <input type="password" id="adminPasswordInput" placeholder="Kata laluan" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <div id="loginErrorMsg" class="hidden text-rose-600 font-semibold text-[11px]"></div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="toggleAdminModal()" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+        <button onclick="loginAdmin()" class="flex-1 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700">Masuk</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: KEMASKINI SKOR -->
+  <div id="editScoreModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 text-xs space-y-3.5">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div>
+          <span id="modalMatchSport" class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Bola Tampar</span>
+          <h3 id="modalMatchStage" class="font-bold text-slate-900 text-sm">Peringkat Kumpulan</h3>
+        </div>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="modalRowId">
+
+      <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+        <div>
+          <label id="modalTeam1Label" class="block font-bold text-slate-800 truncate mb-1">Pasukan 1</label>
+          <input type="number" id="modalScore1" placeholder="0" class="w-full py-2 text-center text-base font-extrabold rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label id="modalTeam2Label" class="block font-bold text-slate-800 truncate mb-1">Pasukan 2</label>
+          <input type="number" id="modalScore2" placeholder="0" class="w-full py-2 text-center text-base font-extrabold rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Status Perlawanan</label>
+        <select id="modalStatus" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="Belum dimainkan">Belum dimainkan</option>
+          <option value="Sedang berlangsung">Sedang berlangsung</option>
+          <option value="Selesai">Selesai</option>
+        </select>
+      </div>
+
+      <div id="updateStatusMsg" class="hidden text-center font-bold text-[11px]"></div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="closeEditModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold">Batal</button>
+        <button onclick="submitScoreUpdate()" id="btnSaveScore" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 flex items-center justify-center gap-1">
+          <span>💾</span> Simpan Skor
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // ⚠️ PENTING: GANTIKAN URL DI BAWAH DENGAN WEB APP URL ANDA DARI LANGKAH 1
+    // ============================================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbyKZnio_-yvwUNgFuKeZbtd8-dVfy5d7r-Qfb7A4b5R-meqcFrJjqbocdPy1cn7TZWRRg/exec";
+
+    let globalData = { standings: [], matches: [] };
+    let currentFilterSport = 'Semua';
+    let adminPass = localStorage.getItem('sukan_admin_pass') || '';
+    let deferredPrompt = null;
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail:', err));
+      });
+    }
+
+    // PWA Install Prompt Listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('pwaInstallBtn');
+      btn.classList.remove('hidden');
+      btn.addEventListener('click', () => {
+        btn.classList.add('hidden');
+        deferredPrompt.prompt();
+      });
+    });
+
+    function getTeamMeta(teamName) {
+      const s = String(teamName || '').toUpperCase();
+      if (s.includes('PKDMT')) return { color: '#f59e0b', bg: 'bg-amber-500' };
+      if (s.includes('HM')) return { color: '#2563eb', bg: 'bg-blue-600' };
+      if (s.includes('JASIN')) return { color: '#059669', bg: 'bg-emerald-600' };
+      if (s.includes('ALOR GAJAH')) return { color: '#e11d48', bg: 'bg-rose-600' };
+      return { color: '#64748b', bg: 'bg-slate-600' };
+    }
+
+    function switchTab(tab) {
+      const isStandings = tab === 'standings';
+      document.getElementById('viewStandings').classList.toggle('hidden', !isStandings);
+      document.getElementById('viewSchedule').classList.toggle('hidden', isStandings);
+
+      document.getElementById('tabBtnStandings').className = isStandings
+        ? 'flex-1 py-2.5 text-center border-b-2 border-white text-white font-bold'
+        : 'flex-1 py-2.5 text-center border-b-2 border-transparent text-indigo-200';
+      document.getElementById('tabBtnSchedule').className = !isStandings
+        ? 'flex-1 py-2.5 text-center border-b-2 border-white text-white font-bold'
+        : 'flex-1 py-2.5 text-center border-b-2 border-transparent text-indigo-200';
+    }
+
+    // Ambil Data Langsung (Fetch API)
+    async function fetchData(isManual = false) {
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (isManual) refreshBtn.classList.add('animate-spin');
+
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        refreshBtn.classList.remove('animate-spin');
+
+        globalData = data;
+        document.getElementById('lastUpdatedTxt').textContent = 'Kemas kini: ' + (data.lastUpdated || '-');
+        renderStandings(data.standings);
+        renderMatches(data.matches);
+      } catch (err) {
+        refreshBtn.classList.remove('animate-spin');
+        console.error("Gagal muat turun:", err);
+      }
+    }
+
+    function renderStandings(standings) {
+      const container = document.getElementById('standingsContainer');
+      if (!standings || standings.length === 0) {
+        container.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Tiada rekod kedudukan.</div>';
+        return;
+      }
+
+      container.innerHTML = standings.map((item, idx) => {
+        const meta = getTeamMeta(item.team);
+        const rank = item.rank || (idx + 1);
+        const isLeader = rank == 1;
+
+        return `
+          <div class="bg-white rounded-2xl p-4 border ${isLeader ? 'border-amber-300 ring-1 ring-amber-300/60 shadow-sm' : 'border-slate-200 shadow-2xs'} flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-xl flex items-center justify-center font-extrabold text-xs ${
+                rank == 1 ? 'bg-amber-400 text-slate-900' : (rank == 2 ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600')
+              }">
+                #${rank}
+              </span>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full inline-block ${meta.bg}"></span>
+                  <h3 class="font-extrabold text-sm text-slate-900">${item.team}</h3>
+                </div>
+                <p class="text-[11px] text-slate-500">${item.notes || 'Kedudukan Semasa'}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-2xl font-black text-slate-900 leading-none">${item.points || 0}</span>
+              <span class="block text-[10px] uppercase font-bold text-slate-400">Mata</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMatches(matches) {
+      const container = document.getElementById('matchesContainer');
+      const filtered = (matches || []).filter(m => currentFilterSport === 'Semua' || m.sport === currentFilterSport);
+      
+      document.getElementById('matchCountBadge').textContent = filtered.length + ' Perlawanan';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs bg-white rounded-xl border border-dashed border-slate-200">Tiada perlawanan bagi acara ini.</div>';
+        return;
+      }
+
+      const isAdmin = Boolean(adminPass);
+
+      container.innerHTML = filtered.map((m) => {
+        const t1 = getTeamMeta(m.team1);
+        const t2 = getTeamMeta(m.team2);
+        const s1 = m.score1 !== "" ? m.score1 : "-";
+        const s2 = m.score2 !== "" ? m.score2 : "-";
+
+        let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-medium">${m.status}</span>`;
+        if (m.status === 'Selesai') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">Selesai</span>`;
+        } else if (String(m.status).includes('berlangsung')) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-50 text-amber-700 font-bold border border-amber-200 animate-pulse">Sedang Main</span>`;
+        }
+
+        return `
+          <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-2.5">
+            <div class="flex items-center justify-between text-[11px] pb-2 border-b border-slate-100">
+              <span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">${m.sport}</span>
+              <span class="text-slate-500 font-medium truncate max-w-[150px]">${m.stage}</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 py-1">
+              <div class="flex-1 flex items-center gap-1.5 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0 ${t1.bg}"></span>
+                <span class="font-extrabold text-xs text-slate-900 truncate">${m.team1}</span>
+              </div>
+
+              <div class="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-mono font-black text-xs text-slate-800 text-center">
+                ${s1} - ${s2}
+              </div>
+
+              <div class="flex-1 flex items-center justify-end gap-1.5 min-w-0 text-right">
+                <span class="font-extrabold text-xs text-slate-900 truncate">${m.team2 || 'Semua'}</span>
+                <span class="w-2.5 h-2.5 rounded-full shrink-0 ${t2.bg}"></span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+              <div>${statusBadge}</div>
+              ${isAdmin ? `
+                <button onclick="openEditModal(${m.rowId}, '${m.sport}', '${m.stage}', '${m.team1}', '${m.score1}', '${m.score2}', '${m.team2}', '${m.status}')" class="text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 flex items-center gap-1">
+                  ✏️ Edit Skor
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterMatches(sport) {
+      currentFilterSport = sport;
+      document.querySelectorAll('.filter-pill').forEach(btn => {
+        const isMatch = btn.getAttribute('data-sport') === sport;
+        btn.className = isMatch
+          ? 'filter-pill px-3 py-1.5 rounded-full font-semibold bg-indigo-600 text-white shrink-0'
+          : 'filter-pill px-3 py-1.5 rounded-full font-semibold bg-white text-slate-700 border border-slate-200 shrink-0';
+      });
+      renderMatches(globalData.matches);
+    }
+
+    function toggleAdminModal() {
+      if (adminPass) {
+        alert('Anda sudah log masuk sebagai Admin.');
+        return;
+      }
+      const modal = document.getElementById('adminLoginModal');
+      modal.classList.toggle('hidden');
+      document.getElementById('loginErrorMsg').classList.add('hidden');
+      document.getElementById('adminPasswordInput').value = '';
+    }
+
+    async function loginAdmin() {
+      const pass = document.getElementById('adminPasswordInput').value.trim();
+      if (!pass) return;
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ password: pass, rowId: 0, score1: 0, score2: 0, status: '' })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          adminPass = pass;
+          localStorage.setItem('sukan_admin_pass', pass);
+          document.getElementById('adminLoginModal').classList.add('hidden');
+          checkAdminStatus();
+          renderMatches(globalData.matches);
+        } else {
+          const errBox = document.getElementById('loginErrorMsg');
+          errBox.textContent = data.message;
+          errBox.classList.remove('hidden');
+        }
+      } catch (e) {
+        alert("Ralat semasa menyemak kata laluan.");
+      }
+    }
+
+    function logoutAdmin() {
+      adminPass = '';
+      localStorage.removeItem('sukan_admin_pass');
+      checkAdminStatus();
+      renderMatches(globalData.matches);
+    }
+
+    function checkAdminStatus() {
+      const hasAdmin = Boolean(adminPass);
+      document.getElementById('adminBanner').classList.toggle('hidden', !hasAdmin);
+      document.getElementById('adminBadgeBtn').textContent = hasAdmin ? '👤 Admin' : '🔑 Admin';
+    }
+
+    function openEditModal(rowId, sport, stage, team1, score1, score2, team2, status) {
+      document.getElementById('modalRowId').value = rowId;
+      document.getElementById('modalMatchSport').textContent = sport;
+      document.getElementById('modalMatchStage').textContent = stage;
+      document.getElementById('modalTeam1Label').textContent = team1;
+      document.getElementById('modalTeam2Label').textContent = team2 || 'Semua';
+      document.getElementById('modalScore1').value = score1 !== "" ? score1 : '';
+      document.getElementById('modalScore2').value = score2 !== "" ? score2 : '';
+      document.getElementById('modalStatus').value = status || 'Belum dimainkan';
+      
+      document.getElementById('updateStatusMsg').classList.add('hidden');
+      document.getElementById('editScoreModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editScoreModal').classList.add('hidden');
+    }
+
+    async function submitScoreUpdate() {
+      const rowId = document.getElementById('modalRowId').value;
+      const s1 = document.getElementById('modalScore1').value;
+      const s2 = document.getElementById('modalScore2').value;
+      const st = document.getElementById('modalStatus').value;
+      const btn = document.getElementById('btnSaveScore');
+      const statusMsg = document.getElementById('updateStatusMsg');
+
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            password: adminPass,
+            rowId: Number(rowId),
+            score1: s1,
+            score2: s2,
+            status: st
+          })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾</span> Simpan Skor';
+
+        if (data.success) {
+          statusMsg.textContent = '✅ Berjaya dikemaskini!';
+          statusMsg.className = 'text-center font-bold text-[11px] text-emerald-600';
+          statusMsg.classList.remove('hidden');
+          setTimeout(() => {
+            closeEditModal();
+            fetchData(true);
+          }, 800);
+        } else {
+          statusMsg.textContent = '❌ ' + data.message;
+          statusMsg.className = 'text-center font-bold text-[11px] text-rose-600';
+          statusMsg.classList.remove('hidden');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾</span> Simpan Skor';
+        alert('Ralat semasa kemas kini skor: ' + err.message);
+      }
+    }
+
+    window.onload = function() {
+      checkAdminStatus();
+      fetchData();
+      setInterval(() => fetchData(), 30000); // Auto-refresh setiap 30 saat
+    };
+  </script>
+</body>
+</html>
